@@ -137,7 +137,7 @@ class ServerProcessor:
 
             self.last_end = end
             print("%1.0f %1.0f %s" % (beg,end,o[2]),flush=True,file=sys.stderr)
-            return "%1.0f %1.0f %s" % (beg,end,o[2])
+            return o[2]
         else:
             logger.debug("No text in this segment")
             return None
