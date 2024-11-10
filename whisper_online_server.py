@@ -137,7 +137,7 @@ class ServerProcessor:
 
             self.last_end = end
             print("%1.0f %1.0f %s" % (beg,end,o[2]),flush=True,file=sys.stderr)
-            return "%1.0f %1.0f %s" % (beg,end,o[2])
+            return o[2]
         else:
             logger.debug("No text in this segment")
             return None
@@ -166,19 +166,41 @@ class ServerProcessor:
 #        self.send_result(o)
 
 
+import signal
+
+def signal_handler(sig, frame):
+    print('Ctrl+C pressed. Exiting the program.')
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 # server loop
+while True:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((args.host, args.port))
+            s.listen(1)
+            logger.info('Listening on '+str((args.host, args.port)))
+            try:
+                while True:
+                    conn, addr = s.accept()
+                    logger.info('Connected to client on {}'.format(addr))
+                    connection = Connection(conn)
+                    proc = ServerProcessor(connection, online, args.min_chunk_size)
+                    proc.process()
+                    conn.close()
+                    logger.info('Connection to client closed')
+            except KeyboardInterrupt:
+                logger.info('Keyboard interrupt detected. Shutting down the server.')
+                break
+            finally:
+                s.close()
+    except Exception as e:
+        logger.error(f'Unexpected error occurred: {e}')
+        logger.info('Attempting to recover from error. Restarting the server.')
+        # You can add a short delay here if needed
+        # import time
+        # time.sleep(5)  # Wait for 5 seconds
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.bind((args.host, args.port))
-    s.listen(1)
-    logger.info('Listening on'+str((args.host, args.port)))
-    while True:
-        conn, addr = s.accept()
-        logger.info('Connected to client on {}'.format(addr))
-        connection = Connection(conn)
-        proc = ServerProcessor(connection, online, args.min_chunk_size)
-        proc.process()
-        conn.close()
-        logger.info('Connection to client closed')
-logger.info('Connection closed, terminating.')
+logger.info('Server has been terminated.')
+
